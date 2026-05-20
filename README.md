@@ -65,10 +65,10 @@ AI Daily News uses a three-layer architecture to provide you with stable and eff
 
 ### Installation
 
-Install from ClawHub:
+Install from ClawHub (OpenClaw):
 
 ```bash
-openclaw skills install grounddata-ai-daily-news
+npx clawhub install grounddata-ai-daily-news
 ```
 
 Install with skills.sh / skills CLI:
@@ -76,6 +76,9 @@ Install with skills.sh / skills CLI:
 ```bash
 npx skills add GroundData/ai-daily-news --skill ai-daily-news
 ```
+
+If you need to target a specific agent explicitly, add `-a <agent>`, for example
+`-a openclaw` or `-a hermes-agent`.
 
 Install from a direct GitHub URL with skills CLI:
 
