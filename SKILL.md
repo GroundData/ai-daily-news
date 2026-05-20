@@ -1,15 +1,26 @@
 ---
 name: ai-daily-news
 description: Fetch global AI news data, synchronize platform capabilities, and invoke remote AI-news analysis. Use this skill only when users ask about AI or machine learning news, such as "today's AI news", "latest AI news", "current AI news", "recent AI updates", or "what's new in AI". For explicit date queries about AI news, use get_news_dataset. Do not use this skill for non-AI news such as sports, politics, finance, or general breaking news.
-license: Apache-2.0
+version: "1.0.2"
+author: finleyfu
+license: MIT-0
 metadata:
   internal: false
-  author: finleyfu
-  version: "1.0.2"
   tags: [ai, ai-news, machine-learning, news]
   openclaw:
-      requires:
-         bins: ["python3"]
+    requires:
+      bins: ["python3"]
+    primaryEnv: AINEWS_ACCESS_TOKEN
+    envVars:
+      - name: AINEWS_ACCESS_TOKEN
+        required: false
+        description: Optional access token for Pro features and paid remote capabilities.
+      - name: AINEWS_SERVICE_URL
+        required: false
+        description: Optional override for the AI Daily News API base URL.
+      - name: AINEWS_CACHE_DIR
+        required: false
+        description: Optional override for the local cache directory.
 ---
 
 # AI Daily News

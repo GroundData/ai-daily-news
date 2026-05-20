@@ -5,7 +5,7 @@
 
 &gt; 💡 **Server-side pre-processing saves you 90% on tokens, contributing to green computing**
 
-&gt; 🔓 Open Source, Apache-2.0 Licensed
+&gt; 🔓 Open Source, MIT-0 Licensed
 
 ---
 
@@ -115,15 +115,17 @@ You: "What can you do?"
 
 ## ⚙️ Configuration (Optional)
 
-No configuration needed in most cases.
+No configuration is required for the default guest experience.
+
+This skill is networked by default. It fetches data and remote capability metadata from the AI Daily News service rather than working as a fully offline skill.
 
 ### Environment Variables
 
 | Environment Variable | Description | Default Value |
 | -------------------- | ----------- | ------------- |
-| `AINEWS_SERVICE_URL` | L2 service URL | `https://api.ainewparadigm.cn/` |
-| `AINEWS_ACCESS_TOKEN` | Pro features access token | Not set |
-| `AINEWS_CACHE_DIR` | Cache directory | System default cache location |
+| `AINEWS_SERVICE_URL` | Optional override for the L2 service URL | `https://api.ainewparadigm.cn/` |
+| `AINEWS_ACCESS_TOKEN` | Optional access token for Pro features | Not set |
+| `AINEWS_CACHE_DIR` | Optional override for the cache directory | System default cache location |
 
 ### Default Cache Locations
 
@@ -358,5 +360,4 @@ Having issues? You can:
 
 ## 📄 License
 
-Apache-2.0
-
+MIT-0
