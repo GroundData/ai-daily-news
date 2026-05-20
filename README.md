@@ -5,6 +5,8 @@
 
 &gt; 💡 **Server-side pre-processing saves you 90% on tokens, contributing to green computing**
 
+&gt; 🔓 Open Source, Apache-2.0 Licensed
+
 ---
 
 ## ✨ Why Choose AI Daily News?
@@ -67,8 +69,8 @@ Place this project folder in your Agent's skills directory:
 
 **Common OpenClaw locations:**
 
-- `&lt;workspace&gt;/skills/ai-daily-news`
-- `&lt;workspace&gt;/.agents/skills/ai-daily-news`
+- `<workspace>/skills/ai-daily-news`
+- `<workspace>/.agents/skills/ai-daily-news`
 - `~/.agents/skills/ai-daily-news`
 - `~/.openclaw/skills/ai-daily-news`
 
@@ -139,8 +141,8 @@ No configuration needed in most cases.
 You: What's new in AI today?
 ```
 
-&lt;details&gt;
-&lt;summary&gt;Click to see full Agent response&lt;/summary&gt;
+<details>
+<summary>Click to see full Agent response</summary>
 
 ```
 Agent: 📰 AI News Highlights - May 19th
@@ -148,7 +150,7 @@ Note: Today's data not yet published, below is the latest news summary for May 1
 
 ---
 
-🏢 Industry Trends &amp; Giant Moves
+🏢 Industry Trends & Giant Moves
 Elon Musk loses lawsuit against OpenAI - Jury dismissed the case on statute of limitations grounds, finding Musk knew the facts as early as 2021 but failed to sue within three years. This may clear the path for OpenAI's IPO.
 
 Anthropic enterprise adoption surpasses OpenAI for first time - According to Gartner data, Anthropic has 34.4% enterprise market share, exceeding OpenAI's 32.3%. Anthropic adoption grew 4x in the past year, but faces challenges of compute constraints and high costs.
@@ -156,14 +158,14 @@ Salesforce announces it will spend nearly $300 million on Anthropic tokens in 20
 
 OpenAI partners with Dell - Brings Codex to hybrid cloud and on-prem enterprise environments, with Codex now used by over 4 million developers weekly for code reviews, testing, incident response, and more.
 
-Cursor releases new model Composer 2.5 - Based on Kimi base, performance close to Claude Opus 4.7 but at 1/10 the cost. Musk previously mocked Cursor as a "wrapper", now actively promotes it due to compute partnership and acquisition priority.
+Cursor releases new model Composer 2.5 - Based on Kimi base, performance close to Claude Opus 4.7 but at 1/10 the cost. Musk previously mocked Cursor as a "wrapper," now actively promotes it due to compute partnership and acquisition priority.
 Tongyi Qianwen 3.7 preview released - Tops domestic models in both text and vision domains. Despite Lin Yonghua's departure, the team's iteration speed actually accelerated, with updates almost monthly from 3.5 to 3.7.
 
 Gartner predicts global AI spending reaches $2.59 trillion in 2026 - 47% YoY growth, with AI infrastructure accounting for over 45%, AI model spending expected to grow 110%.
 
 ---
 
-🧠 Tech Breakthroughs &amp; Research
+🧠 Technological Breakthroughs & Research
 Google DeepMind × Liverpool launches football tactics AI - TacticAI system can predict ball trajectories and adjust player positioning in set pieces like corner kicks, with AI suggestions superior to actual tactical arrangements in 90% of expert evaluations.
 
 UC Berkeley FST framework challenges OpenAI - Proposes "fast-slow layering" continual learning mechanism, letting large models adapt quickly to new tasks while consolidating long-term abilities like the human brain, avoiding catastrophic forgetting. Traditional methods stalled at the second task, FST successfully completed three consecutive tasks.
@@ -177,7 +179,7 @@ NVIDIA Cosmos video model fine-tuning - Use LoRA/DoRA techniques to fine-tune on
 
 ---
 
-🤖 Applications &amp; Product Innovation
+🤖 Applications & Product Innovation
 Moore Threads releases first full-stack embodied intelligence simulation platform - MT Lambda lets robot dogs train actions in virtual environment and directly "copy-paste" to real world, connecting full pipeline from large model training to edge deployment.
 
 Microsoft acknowledges Copilot key frustration - After replacing right Ctrl key impacting developer and power user productivity, Microsoft now allows users to remap Copilot key back to Ctrl or Menu key.
@@ -191,7 +193,7 @@ YouTube upgrades AI audio mute - "Erase Song" precisely removes copyrighted musi
 Gemini hidden feature analyzes YouTube videos - Generates timestamped summaries, answers questions directly, jumps to segments, extracts recipes, significantly improving viewing efficiency.
 ---
 
-📊 Deep Perspectives &amp; Industry Insights
+📊 Deep Perspectives & Industry Insights
 Why 95% of AI demos fail in production? - Root cause is not algorithm issues, but accumulation of five types of "production debt": technical debt, operational debt, evaluation debt, integration debt, and governance debt.
 
 Triple logic behind 15 automakers collective price hikes - Lithium prices up 167%, chip prices up 3x, industry profit margin down to 3.2%, forcing automakers to shift from "trading price for volume" to "trading tech for volume".
@@ -205,7 +207,7 @@ Success practice of "human-in-the-loop" model - Dataminr deployed AI since 2018 
 Data source: AI Daily News Dataset 2026-05-19, containing 60 global AI news articles
 ```
 
-&lt;/details&gt;
+</details>
 
 ### Example 2: Query by Specific Date
 
@@ -213,8 +215,8 @@ Data source: AI Daily News Dataset 2026-05-19, containing 60 global AI news arti
 You: Show me AI news from May 10th?
 ```
 
-&lt;details&gt;
-&lt;summary&gt;Click to see full Agent response&lt;/summary&gt;
+<details>
+<summary>Click to see full Agent response</summary>
 
 ```
 Agent: AI News Summary - May 10, 2026
@@ -228,7 +230,7 @@ Multiple automakers deny "being summoned"
 AITO, Xpeng, Tesla issue statements denying regulatory summit rumors, saying falsehood came from an AI-generated list.
 
 OncoAgent: Privacy-preserving oncology clinical decision AI
-Open-source two-layer multi-agent framework, simple cases use 9B parameter model, complex cases auto-switch to 27B parameter model
+Open-source two-layer multi-agent framework, simple cases use 9B parameter model, complex cases auto-switch to 27B model
 References 70+ NCCN and ESMO authoritative guidelines, four stages of relevance validation
 Runs locally on single AMD Instinct MI300X GPU, trains on 260k cases in ~50 minutes, 56x faster than API.
 
@@ -243,7 +245,7 @@ Wang Yiping uses self-developed AI framework to improve Ramsey number R(3,17) lo
 
 Red Hat: 2026 is "Year of LLM Evaluation"
 Proposes "Trade-off Triangle": model quality, response speed, cost hard to optimize simultaneously. Suggest setting metrics by scenario:
-E-commerce chatbot: TTFT (time to first token) &lt; 200ms
+E-commerce chatbot: TTFT (time to first token) < 200ms
 RAG applications: prioritize accuracy, latency can relax
 Recommends open-source evaluation tools like GuideLLM, Ragas, Langfuse.
 
@@ -254,7 +256,7 @@ JD "Idou Creation Camp" mass produces new AI hardware species
 Target to incubate 101 benchmark AI hardware products in 2026, not looking at scale and sales, only creativity and scenario value. Success story: Smart Pocket children AI science camera, got 40k orders after JD debut, provides full chain support from product release, targeted exposure to logistics and after-sales.
 ```
 
-&lt;/details&gt;
+</details>
 
 ### Example 3: Explore Features
 
@@ -262,8 +264,8 @@ Target to incubate 101 benchmark AI hardware products in 2026, not looking at sc
 You: ai daily news, what can you do?
 ```
 
-&lt;details&gt;
-&lt;summary&gt;Click to see full Agent response&lt;/summary&gt;
+<details>
+<summary>Click to see full Agent response</summary>
 
 ```
 Agent: AI Daily News Features
@@ -291,7 +293,7 @@ AI news from May 10th → Query by date
 Original of this article → Download full original (Pro feature)
 ```
 
-&lt;/details&gt;
+</details>
 
 ### Example 4: Download Original Link (Pro Feature)
 
@@ -299,14 +301,14 @@ Original of this article → Download full original (Pro feature)
 You: Give me the link to "geohot: The real singularity is friends along the way"?
 ```
 
-&lt;details&gt;
-&lt;summary&gt;Click to see full Agent response&lt;/summary&gt;
+<details>
+<summary>Click to see full Agent response</summary>
 
 ```
 Agent: The link to this article is: https://geohot.github.io//blog/jekyll/update/2026/05/09/real-singularity.html
 ```
 
-&lt;/details&gt;
+</details>
 
 ***
 
@@ -314,11 +316,11 @@ Agent: The link to this article is: https://geohot.github.io//blog/jekyll/update
 
 - **Python 3**
 - Only Python standard library, no extra packages needed
-- Network access to configured RESTful API service
+- Network access to configured RESTFul API service
 
 ***
 
-## 💾 Caching &amp; Offline Behavior
+## 💾 Caching & Offline Behavior
 
 - News dataset cache, manifest cache, and delivery log are written to user's runtime cache directory
 - `scripts/data/ai_news_manifest.json` is kept as bundled read-only manifest fallback for deterministic offline behavior
