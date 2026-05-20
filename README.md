@@ -71,7 +71,19 @@ Install from ClawHub:
 openclaw skills install grounddata-ai-daily-news
 ```
 
-Use this repository as a Hermes tap:
+Install with skills.sh / skills CLI:
+
+```bash
+npx skills add GroundData/ai-daily-news --skill ai-daily-news
+```
+
+Install from a direct GitHub URL with skills CLI:
+
+```bash
+npx skills add https://github.com/GroundData/ai-daily-news --skill ai-daily-news
+```
+
+Install from Hermes using this repository as a tap:
 
 ```bash
 hermes skills tap add GroundData/ai-daily-news
