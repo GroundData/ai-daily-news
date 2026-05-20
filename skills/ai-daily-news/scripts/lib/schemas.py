@@ -10,7 +10,7 @@ Responsibilities:
 import re
 from datetime import datetime, date
 
-CURRENT_VERSION = "v1.0.2"
+CURRENT_VERSION = "v1.0.3"
 
 
 class L3Error(Exception):

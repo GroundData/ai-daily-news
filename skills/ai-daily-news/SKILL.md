@@ -1,7 +1,7 @@
 ---
 name: ai-daily-news
 description: Fetch global AI news data, synchronize platform capabilities, and invoke remote AI-news analysis. Use this skill only when users ask about AI or machine learning news, such as "today's AI news", "latest AI news", "current AI news", "recent AI updates", or "what's new in AI". For explicit date queries about AI news, use get_news_dataset. Do not use this skill for non-AI news such as sports, politics, finance, or general breaking news.
-version: "1.0.2"
+version: "1.0.3"
 author: finleyfu
 license: MIT-0
 metadata:
