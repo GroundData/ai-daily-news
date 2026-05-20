@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+mock_data/
+scripts/data/cache/
+*.json.gz
+
+# Internal docs (may contain sensitive information)
+docs/internal/
+
+# Local release script
+release2public.sh
