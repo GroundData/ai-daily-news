@@ -65,17 +65,31 @@ AI Daily News uses a three-layer architecture to provide you with stable and eff
 
 ### Installation
 
-Place this project folder in your Agent's skills directory:
+Install from ClawHub:
 
-**Common OpenClaw locations:**
+```bash
+openclaw skills install grounddata-ai-daily-news
+```
+
+Use this repository as a Hermes tap:
+
+```bash
+hermes skills tap add GroundData/ai-daily-news
+hermes skills install GroundData/ai-daily-news/ai-daily-news
+```
+
+Or manually copy the skill folder into your Agent's skills directory:
+
+**Skill folder to copy from this repo:**
+
+- `skills/ai-daily-news`
+
+**Common local install locations:**
 
 - `<workspace>/skills/ai-daily-news`
 - `<workspace>/.agents/skills/ai-daily-news`
 - `~/.agents/skills/ai-daily-news`
 - `~/.openclaw/skills/ai-daily-news`
-
-**Common Hermes Agent location:**
-
 - `~/.hermes/skills/ai-daily-news`
 
 Restart your Agent after installation.
@@ -325,7 +339,7 @@ Agent: The link to this article is: https://geohot.github.io//blog/jekyll/update
 ## 💾 Caching & Offline Behavior
 
 - News dataset cache, manifest cache, and delivery log are written to user's runtime cache directory
-- `scripts/data/ai_news_manifest.json` is kept as bundled read-only manifest fallback for deterministic offline behavior
+- `skills/ai-daily-news/scripts/data/ai_news_manifest.json` is kept as bundled read-only manifest fallback for deterministic offline behavior
 - Expired dataset cache entries are not guaranteed to be available offline
 
 ***
@@ -342,9 +356,12 @@ Agent: The link to this article is: https://geohot.github.io//blog/jekyll/update
 
 ```
 ai-daily-news/
-├── SKILL.md          # Skill definition (for Agent)
-├── README.md         # This file (for you)
-└── scripts/          # Tool scripts
+├── LICENSE
+├── README.md
+└── skills/
+    └── ai-daily-news/
+        ├── SKILL.md
+        └── scripts/
 ```
 
 ***
@@ -353,7 +370,7 @@ ai-daily-news/
 
 Having issues? You can:
 
-1. Check [SKILL.md](SKILL.md) for technical details
+1. Check [skills/ai-daily-news/SKILL.md](skills/ai-daily-news/SKILL.md) for technical details
 2. Ask questions in GitHub Issues
 
 ***
