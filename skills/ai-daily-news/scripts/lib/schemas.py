@@ -12,9 +12,7 @@ import re
 import os
 from datetime import datetime, date
 
-CURRENT_VERSION = "v1.0.3"
-
-
+CURRENT_VERSION = "v1.1.0"
 def get_client_timezone() -> str:
     """
     Get the client's timezone.
