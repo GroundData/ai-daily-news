@@ -192,18 +192,77 @@ def format_latest_dataset(result: dict, tier: str) -> str:
     notice_for_user = result.get("notice_for_user", "")
     data = result.get("data", {})
 
+    # Check for local time enhancement
+    display_notice = result.get("display_notice")
+    generated_at_local = result.get("generated_at_local")
+    client_timezone = result.get("client_timezone")
+    resolved_source_date = result.get("resolved_source_date", resolved_date)
+    display_mode = result.get("display_mode")
+
     # First, format the freshness metadata section (IMPORTANT: LLM must see this first)
     lines = []
     lines.append(f"# AI Daily News — Latest Available ({tier})")
     lines.append("")
-    lines.append("## Freshness Information")
+
+    if display_mode == "local_time" and display_notice:
+        # Prefer local time display for enhanced responses
+        lines.append("## Freshness Information (Local Time)")
+        lines.append("")
+        lines.append(f"- **Notice**: {display_notice}")
+        if generated_at_local:
+            lines.append(f"- **Generated At (Local)**: {generated_at_local}")
+        if client_timezone:
+            lines.append(f"- **Your Timezone**: {client_timezone}")
+        lines.append(f"- **Resolved Canonical Date**: {resolved_source_date}")
+        lines.append("")
+    else:
+        # Legacy display mode
+        lines.append("## Freshness Information")
+        lines.append("")
+        lines.append(f"- **Resolved Date**: {resolved_date}")
+        lines.append(f"- **Freshness Status**: {freshness_status}")
+        lines.append(f"- **Days Behind**: {days_behind}")
+        lines.append(f"- **Notice**: {notice_for_user}")
+        lines.append(f"- **Dataset Ref**: {dataset_ref}")
+        lines.append("")
+
+    lines.extend(_render_dataset_content(data))
+
+    return "\n".join(lines)
+
+
+def format_resolved_date_dataset(result: dict, tier: str) -> str:
+    """
+    Format the wrapped local date resolved dataset response.
+
+    Parameters:
+        result: The wrapped response from L2 (contains requested_local_date,
+                resolved_source_date, display_notice, data)
+        tier: Tier name
+
+    Returns:
+        Markdown string with local date metadata and dataset content
+    """
+    requested_local_date = result.get("requested_local_date", "")
+    resolved_source_date = result.get("resolved_source_date", "")
+    client_timezone = result.get("client_timezone", "")
+    generated_at_local = result.get("generated_at_local", "")
+    display_notice = result.get("display_notice", "")
+    data = result.get("data", {})
+
+    lines = []
+    lines.append(f"# AI Daily News — {requested_local_date} (Local Time, {tier})")
     lines.append("")
-    lines.append(f"- **Resolved Date**: {resolved_date}")
-    lines.append(f"- **Freshness Status**: {freshness_status}")
-    lines.append(f"- **Days Behind**: {days_behind}")
-    lines.append(f"- **Notice**: {notice_for_user}")
-    lines.append(f"- **Dataset Ref**: {dataset_ref}")
+    lines.append("## Date Resolution Information")
     lines.append("")
+    lines.append(f"- **Notice**: {display_notice}")
+    lines.append(f"- **Requested Local Date**: {requested_local_date}")
+    lines.append(f"- **Your Timezone**: {client_timezone}")
+    lines.append(f"- **Resolved Canonical Date**: {resolved_source_date}")
+    if generated_at_local:
+        lines.append(f"- **Generated At (Local)**: {generated_at_local}")
+    lines.append("")
+
     lines.extend(_render_dataset_content(data))
 
     return "\n".join(lines)

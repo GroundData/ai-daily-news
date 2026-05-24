@@ -142,6 +142,8 @@ def resolve_latest(
 
     Returns metadata without actual data. Then call download_dataset with
     the resolved_date to get the actual data.
+
+    DEPRECATED: Use resolve_latest_enhanced instead for local time support.
     """
     if tier == "guest":
         url = (
@@ -169,6 +171,95 @@ def resolve_latest(
         raise NetworkError(f"Resolve latest HTTP error: {e.code}")
     except Exception as e:
         raise NetworkError(f"Resolve latest error: {e}")
+
+
+def resolve_latest_enhanced(
+    tier: str = "guest",
+    client_timezone: Optional[str] = None,
+    base_url: Optional[str] = None,
+    api_key: Optional[str] = None,
+    timeout: int = DEFAULT_TIMEOUT,
+) -> dict:
+    """
+    Resolve the latest available date with optional local time enhancement.
+
+    Returns metadata without actual data. Then call download_dataset with
+    the resolved_source_date to get the actual data.
+    """
+    if tier == "guest":
+        url = (
+            f"{base_url or DEFAULT_SERVICE_URL}/v1/data/resolve-latest"
+            f"?product_name=news_dataset&schema_version=v1&tier={tier}"
+        )
+        if client_timezone:
+            url += f"&client_timezone={client_timezone}"
+    else:
+        url = (
+            f"{base_url or DEFAULT_SERVICE_URL}/v1/data/resolve-latest/pro"
+            f"?product_name=news_dataset&schema_version=v1&tier={tier}"
+        )
+        if client_timezone:
+            url += f"&client_timezone={client_timezone}"
+
+    headers = _build_headers(api_key)
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        if e.code == 401:
+            raise NetworkError("Invalid or missing access token")
+        if e.code == 403:
+            raise NetworkError(f"Tier {tier} not included in your subscription")
+        if e.code == 404:
+            raise NetworkError("No available dataset found")
+        raise NetworkError(f"Resolve latest HTTP error: {e.code}")
+    except Exception as e:
+        raise NetworkError(f"Resolve latest error: {e}")
+
+
+def resolve_date(
+    local_date: str,
+    client_timezone: str,
+    tier: str = "guest",
+    base_url: Optional[str] = None,
+    api_key: Optional[str] = None,
+    timeout: int = DEFAULT_TIMEOUT,
+) -> dict:
+    """
+    Resolve a user's local date to the appropriate canonical dataset.
+
+    Returns metadata about the matching dataset. Then call download_dataset with
+    the resolved_source_date to get the actual data.
+    """
+    if tier == "guest":
+        url = (
+            f"{base_url or DEFAULT_SERVICE_URL}/v1/data/resolve-date"
+            f"?product_name=news_dataset&schema_version=v1"
+            f"&local_date={local_date}&client_timezone={client_timezone}&tier={tier}"
+        )
+    else:
+        url = (
+            f"{base_url or DEFAULT_SERVICE_URL}/v1/data/resolve-date/pro"
+            f"?product_name=news_dataset&schema_version=v1"
+            f"&local_date={local_date}&client_timezone={client_timezone}&tier={tier}"
+        )
+
+    headers = _build_headers(api_key)
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        if e.code == 401:
+            raise NetworkError("Invalid or missing access token")
+        if e.code == 403:
+            raise NetworkError(f"Tier {tier} not included in your subscription")
+        if e.code == 404:
+            raise NetworkError("No matching dataset found for the requested local date")
+        raise NetworkError(f"Resolve date HTTP error: {e.code}")
+    except Exception as e:
+        raise NetworkError(f"Resolve date error: {e}")
 
 
 # Import errors from schemas
