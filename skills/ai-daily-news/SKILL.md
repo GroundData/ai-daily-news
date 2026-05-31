@@ -43,10 +43,10 @@ Fetch global AI news data from a unified dataset, synchronize platform capabilit
 
 The underlying dataset content may be in English (normalized), but your answers should match the user's query language. Use the dataset's `_data_dictionary` to understand fields, then summarize/translate the content into the user's language as needed.
 
-## Four Stable Tools 
+## Four Stable Tools
 
 | Tool | Purpose | When to Use |
-|---|---|---|
+|-----|-----|-----|
 | **get_latest_news** | Fetch latest available AI news with freshness metadata | ⭐ **DEFAULT**: User asks for today's AI news, current AI news, latest AI news, recent AI updates, most recent AI news |
 | **get_news_dataset** | Fetch news for specific date | User explicitly provides a date (YYYY-MM-DD) |
 | **sync_capabilities** | Discover capabilities, check updates, get upgrade guidance | User asks "what can you do?", or need to discover features first |
@@ -73,7 +73,7 @@ For OpenClaw and Hermes-style shell execution, invoke the scripts in this direct
 Fetches the most recent available dataset, wrapped with freshness metadata.
 
 | Parameter | Type | Required | Description |
-|---|---|---|---|
+|-----|-----|-----|-----|
 | `tier` | string | No | guest / pro_core / pro_plus, defaults to guest |
 | `base-url` | string | No | L2 API base URL (for development) |
 | `timezone` | string | No | Client timezone in IANA format (e.g., "America/New_York", "Asia/Shanghai"). If not provided, auto-detects from system. |
@@ -112,7 +112,7 @@ python ${SKILL_ROOT}/scripts/get_latest_news.py --tier pro_core
 Fetches the unified `news_dataset.v1` for a specific date. **Interprets dates in user's local timezone.**
 
 | Parameter | Type | Required | Description |
-|---|---|---|---|
+|-----|-----|-----|-----|
 | `date` | string | Yes | YYYY-MM-DD format, or relative dates like "yesterday", "today" (interpreted as local date) |
 | `tier` | string | No | guest / pro_core / pro_plus, defaults to guest |
 | `base-url` | string | No | L2 API base URL (for development) |
@@ -147,7 +147,7 @@ python ${SKILL_ROOT}/scripts/get_news_dataset.py --date 2026-05-10 --tier pro_co
 Synchronizes the platform capability manifest and checks for version upgrades. Use this when you need to discover what features are available.
 
 | Parameter | Type | Required | Description |
-|---|---|---|---|
+|-----|-----|-----|-----|
 | `force` | flag | No | Force refresh cache |
 | `base-url` | string | No | L2 API base URL (for development) |
 
@@ -165,7 +165,7 @@ python ${SKILL_ROOT}/scripts/sync_capabilities.py --force
 Invokes a remote analysis feature on L2. Check `sync_capabilities` first to see what's available.
 
 | Parameter | Type | Required | Description |
-|---|---|---|---|
+|-----|-----|-----|-----|
 | `capability-name` | string | Yes | Name of the capability to invoke |
 | `--param` | key=value | No | Multiple allowed, simple key-value parameters |
 | `--params-json` | string | No | Complex parameters as JSON string (for nested/array parameters) |
@@ -214,6 +214,38 @@ When local time enhancement is available (`display_mode: "local_time"`):
 - Use `title_normalized` and `summary_normalized` as primary content sources
 - For freshness: Check and report `freshness_status` and `resolved_date` first
 
+## New: Presentation Sections Guide
+
+The tool output is now organized into three non-overlapping sections:
+
+### 1. Top News
+- Contains the highest-priority AI news selected by the editorial/topN pipeline
+- **When to use**: When answering questions about "today's news", "latest updates", or "most important news"
+- **How it's organized**: Grouped by categories like "Today Briefing", "Industry Trend", etc.
+- **Priority fields**: For each record, the most important fields are shown first (title, categories, ranking rationale, etc.)
+
+### 2. Source Updates
+- Contains important non-news updates from GitHub, social media, video sources, etc.
+- **When to use**: Use together with Top News when answering broad questions about "today's news", "latest updates", or "what's new in AI", especially when these source updates materially add to the overall picture. Also use this section directly when answering questions about GitHub activity, social media trends, or video updates
+- **How it's organized**: Grouped by source type (GitHub, Social, Video)
+
+### 3. Remaining News
+- Contains all other news records not included in Top News
+- **When to use**: Only when the user asks for "all news", "remaining news", or when the answer requires more comprehensive coverage
+- **Important**: Do not repeat content from Top News when summarizing Remaining News unless explicitly requested
+
+### Key Rules
+- The three sections are **non-overlapping** — a record appears in exactly one section
+- Together, they contain **all records** in the dataset
+- Always prioritize Top News for general "what's new" questions, and include relevant Source Updates when they contribute materially to the answer
+- Only go to Remaining News when the user explicitly asks for more comprehensive coverage
+
+### 📌 Important User Guidance
+When summarizing today's AI news for the user:
+1. **First present the Top News and relevant Source Updates** (these are the most important content)
+2. **Then explicitly tell the user**: "This is a selection of key news. There are additional AI news stories available in the full dataset if you'd like to see more comprehensive coverage."
+3. **Offer to show more** if the user wants additional news, deeper coverage, or specific categories of news not shown in the initial summary
+
 ---
 
 ## Configuration
@@ -221,7 +253,7 @@ When local time enhancement is available (`display_mode: "local_time"`):
 ### Environment Variables
 
 | Variable | Description | Default |
-|---|---|---|
+|-----|-----|-----|
 | `AINEWS_SERVICE_URL` | L2 API base URL | `https://api.ainewparadigm.cn/` |
 | `AINEWS_ACCESS_TOKEN` | Access Token for Pro features (optional) | None |
 | `AINEWS_CACHE_DIR` | Override runtime cache directory | OS-specific user cache directory |

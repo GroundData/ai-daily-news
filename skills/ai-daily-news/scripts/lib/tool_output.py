@@ -9,6 +9,7 @@ Responsibilities:
 """
 
 import json
+from typing import Dict, Any, List, Tuple
 from lib.data_store import has_seen_ads, mark_ads_shown
 
 
@@ -53,7 +54,7 @@ def _format_scalar(value) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
-def _flatten_markdown_fields(value, prefix: str = "") -> list[tuple[str, str]]:
+def _flatten_markdown_fields(value, prefix: str = "") -> List[Tuple[str, Any]]:
     """
     Flatten nested dict/list data into dotted markdown field paths.
 
@@ -80,8 +81,8 @@ def _flatten_markdown_fields(value, prefix: str = "") -> list[tuple[str, str]]:
             return [(prefix, json.dumps(value, ensure_ascii=False))]
 
         rows = []
-        for index, item in enumerate(value):
-            next_prefix = f"{prefix}[{index}]"
+        for idx, item in enumerate(value):
+            next_prefix = f"{prefix}[{idx}]"
             rows.extend(_flatten_markdown_fields(item, next_prefix))
         if not rows:
             rows.append((prefix, "[]"))
@@ -90,6 +91,155 @@ def _flatten_markdown_fields(value, prefix: str = "") -> list[tuple[str, str]]:
     if not prefix:
         return [("value", _format_scalar(value))]
     return [(prefix, _format_scalar(value))]
+
+
+def _render_record_with_priority(record: Dict[str, Any]) -> List[str]:
+    """
+    Render a record with priority fields first (for Top News).
+
+    Priority order:
+    - presentation_group_label
+    - top_news_position
+    - title_normalized
+    - categories
+    - secondary_class_l1
+    - secondary_class_l2
+    - strategic_explainer
+    - ranking_rationale
+    - ... rest of the fields
+    """
+    # Define priority order
+    priority_fields = [
+        "presentation_group_label",
+        "top_news_position",
+        "title_normalized",
+        "categories",
+        "secondary_class_l1",
+        "secondary_class_l2",
+        "strategic_explainer",
+        "ranking_rationale",
+    ]
+
+    # Get all flattened fields
+    all_fields = dict(_flatten_markdown_fields(record))
+
+    lines = []
+
+    # Render priority fields first (if present)
+    for field in priority_fields:
+        if field in all_fields:
+            value = all_fields.pop(field)
+            lines.append(f"- {field}: {_format_scalar(value)}")
+
+    # Render remaining fields sorted
+    for field, value in sorted(all_fields.items()):
+        lines.append(f"- {field}: {_format_scalar(value)}")
+
+    return lines
+
+
+def _group_records_by_section_and_group(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, List[Dict[str, Any]]]]:
+    """Group records by presentation_section and presentation_group."""
+    result: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
+
+    for record in records:
+        section = record.get("presentation_section")
+        group = record.get("presentation_group", "unknown")
+
+        if section not in result:
+            result[section] = {}
+        if group not in result[section]:
+            result[section][group] = []
+
+        result[section][group].append(record)
+
+    return result
+
+
+def _has_presentation_fields(records: List[Dict[str, Any]]) -> bool:
+    """Check if records have presentation fields (for backward compatibility)."""
+    if not records:
+        return False
+    first_record = records[0]
+    return "presentation_section" in first_record
+
+
+def _render_section(
+    section_name: str,
+    section_label: str,
+    groups: Dict[str, List[Dict[str, Any]]],
+    presentation_groups: List[Dict[str, Any]] = None,
+    use_priority_order: bool = False,
+) -> List[str]:
+    """Render a section with its groups and records.
+    Group display is driven by _meta.presentation.groups if available.
+    """
+    lines = [f"## {section_label}"]
+    lines.append("")
+
+    # Build group meta lookup for quick access
+    group_meta_map = {}
+    if presentation_groups:
+        for gm in presentation_groups:
+            group_name = gm.get("name")
+            if group_name:
+                group_meta_map[group_name] = gm
+
+    # Sort groups: first try using meta order, then fallback to record fields
+    def get_group_order(group_name: str, group_records: List[Dict[str, Any]]) -> int:
+        # First try from presentation.groups
+        if group_name in group_meta_map:
+            return group_meta_map[group_name].get("order", 999)
+        # Fallback to record fields
+        if group_records:
+            return group_records[0].get("presentation_group_order", 999)
+        return 999
+
+    sorted_groups = sorted(groups.items(), key=lambda g: get_group_order(g[0], g[1]))
+
+    for group_name, group_records in sorted_groups:
+        if not group_records:
+            continue
+
+        # Get group label: first try from presentation.groups, then fallback to record
+        group_label = group_name
+        group_description = None
+
+        if group_name in group_meta_map:
+            group_label = group_meta_map[group_name].get("label", group_name)
+            group_description = group_meta_map[group_name].get("description")
+        else:
+            if group_records:
+                group_label = group_records[0].get("presentation_group_label", group_name)
+
+        if len(sorted_groups) > 1:
+            lines.append(f"### {group_label}")
+            if group_description:
+                lines.append(f"_{group_description}_")
+            lines.append("")
+
+        # Sort records within group by presentation_item_order
+        def get_item_order(record: Dict[str, Any]) -> int:
+            return record.get("presentation_item_order", 999)
+
+        sorted_records = sorted(group_records, key=get_item_order)
+
+        for idx, record in enumerate(sorted_records, 1):
+            if len(sorted_groups) > 1:
+                lines.append(f"#### Item {idx}")
+            else:
+                lines.append(f"#### Record {idx}")
+            lines.append("")
+
+            if use_priority_order:
+                lines.extend(_render_record_with_priority(record))
+            else:
+                for field, value in _flatten_markdown_fields(record):
+                    lines.append(f"- {field}: {_format_scalar(value)}")
+
+            lines.append("")
+
+    return lines
 
 
 def _render_full_dataset_markdown(data: dict) -> list[str]:
@@ -117,8 +267,8 @@ def _render_full_dataset_markdown(data: dict) -> list[str]:
     records = data.get("data", [])
     lines.append("### Records")
     lines.append("")
-    for index, record in enumerate(records, 1):
-        lines.append(f"#### Record {index}")
+    for idx, record in enumerate(records, 1):
+        lines.append(f"#### Record {idx}")
         lines.append("")
         for field_path, field_value in _flatten_markdown_fields(record):
             lines.append(f"- {field_path}: {_format_scalar(field_value)}")
@@ -127,25 +277,93 @@ def _render_full_dataset_markdown(data: dict) -> list[str]:
     return lines
 
 
-def _render_dataset_content(data: dict) -> list[str]:
-    """Render the shared dataset body for dated and latest responses."""
+def _render_dataset_content_new(data: dict) -> list[str]:
+    """Render the shared dataset body using new section-based format."""
     meta = data.get("_meta", {})
     ads = data.get("_ads", {})
+    records = data.get("data", [])
 
     lines = []
     lines.append(f"- Source: {meta.get('source', meta.get('dataset_name', 'news_dataset'))}")
     lines.append(f"- Schema: {meta.get('schema_version', 'v1')}")
     lines.append(f"- Language: {meta.get('normalization_language', 'en')}")
-    lines.append(f"- Records: {len(data.get('data', []))}")
+    lines.append(f"- Records: {len(records)}")
     generated_at = meta.get("generated_at")
     if generated_at:
         lines.append(f"- Generated At: {generated_at}")
     lines.append("")
 
     lines.extend(_render_ads(ads))
-    lines.extend(_render_full_dataset_markdown(data))
+
+    if not _has_presentation_fields(records):
+        # Fallback to old format
+        lines.extend(_render_full_dataset_markdown(data))
+        return lines
+
+    # Group records by section and group
+    grouped = _group_records_by_section_and_group(records)
+
+    # Get presentation metadata if available
+    presentation = meta.get("presentation", {})
+
+    # Determine section order from meta, or fallback to hardcoded
+    section_order = presentation.get("section_order", ["top_news", "source_updates", "remaining_news"])
+
+    # Build section label map from meta, or fallback to hardcoded
+    section_label_map = {}
+    sections_meta = presentation.get("sections", [])
+    for section_meta in sections_meta:
+        section_name = section_meta.get("name")
+        if section_name:
+            section_label_map[section_name] = section_meta.get("label", section_name)
+
+    # Fallback labels for compatibility
+    fallback_section_labels = {
+        "top_news": "Top News",
+        "source_updates": "Source Updates",
+        "remaining_news": "Remaining News",
+    }
+
+    # Get groups meta for rendering
+    presentation_groups = presentation.get("groups", [])
+
+    # Render sections in order
+    for section in section_order:
+        if section in grouped:
+            # Use label from meta if available, otherwise fallback
+            section_label = section_label_map.get(section, fallback_section_labels.get(section, section))
+            lines.extend(_render_section(
+                section,
+                section_label,
+                grouped[section],
+                presentation_groups=presentation_groups,
+                use_priority_order=(section == "top_news"),
+            ))
+
+    # Render meta, data dictionary, ads
+    lines.append("---")
+    lines.append("")
+    lines.append("## Metadata & Dictionary")
+    lines.append("")
+    lines.append("### Dataset Meta")
+    lines.append("")
+    for field_path, field_value in _flatten_markdown_fields(meta):
+        lines.append(f"- {field_path}: {_format_scalar(field_value)}")
+    lines.append("")
+
+    lines.append("### Data Dictionary")
+    lines.append("")
+    data_dict = data.get("_data_dictionary", {})
+    for field_path, field_value in _flatten_markdown_fields(data_dict):
+        lines.append(f"- {field_path}: {_format_scalar(field_value)}")
+    lines.append("")
 
     return lines
+
+
+def _render_dataset_content(data: dict) -> list[str]:
+    """Render the shared dataset body (for backward compatibility)."""
+    return _render_dataset_content_new(data)
 
 
 def format_dataset(data: dict, date: str, tier: str) -> str:
