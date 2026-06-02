@@ -93,6 +93,13 @@ def main():
 
         # Format output for LLM
         output = format_latest_dataset(result, tier)
+        
+        # Prepend response guidance if provided by L2
+        guidance = metadata.get("response_guidance", {})
+        guidance_text = guidance.get("text")
+        if guidance_text:
+            output = guidance_text + "\n\n" + output
+            
         print(output)
 
     except NetworkError as e:

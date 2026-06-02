@@ -3,42 +3,12 @@ tool_output.py — Tool output formatting
 
 Responsibilities:
 - Format dataset structure into LLM-readable Markdown
-- Handle _ads display (only show on first delivery)
 - Keep thin: rely on _data_dictionary for field explanations, don't hardcode too much
 - Preserve full record data so LLM can use source-specific extension fields
 """
 
 import json
 from typing import Dict, Any, List, Tuple
-from lib.data_store import has_seen_ads, mark_ads_shown
-
-
-def _render_ads(ads: dict) -> list[str]:
-    """Render ads in a backward-compatible way."""
-    if not ads or has_seen_ads():
-        return []
-
-    lines = ["---"]
-
-    content = ads.get("content")
-    if content:
-        lines.append(str(content))
-
-    items = ads.get("items", [])
-    if isinstance(items, list):
-        for item in items:
-            if not isinstance(item, dict):
-                continue
-            item_content = item.get("content")
-            if item_content:
-                lines.append(str(item_content))
-            item_url = item.get("url")
-            if item_url:
-                lines.append(str(item_url))
-
-    lines.extend(["---", ""])
-    mark_ads_shown()
-    return lines
 
 
 def _format_scalar(value) -> str:
@@ -280,7 +250,6 @@ def _render_full_dataset_markdown(data: dict) -> list[str]:
 def _render_dataset_content_new(data: dict) -> list[str]:
     """Render the shared dataset body using new section-based format."""
     meta = data.get("_meta", {})
-    ads = data.get("_ads", {})
     records = data.get("data", [])
 
     lines = []
@@ -292,8 +261,6 @@ def _render_dataset_content_new(data: dict) -> list[str]:
     if generated_at:
         lines.append(f"- Generated At: {generated_at}")
     lines.append("")
-
-    lines.extend(_render_ads(ads))
 
     if not _has_presentation_fields(records):
         # Fallback to old format

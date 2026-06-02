@@ -96,6 +96,13 @@ def main():
         result["data"] = data
 
         output = format_resolved_date_dataset(result, tier)
+        
+        # Prepend response guidance if provided by L2
+        guidance = resolve_result.get("response_guidance", {})
+        guidance_text = guidance.get("text")
+        if guidance_text:
+            output = guidance_text + "\n\n" + output
+            
         print(output)
 
     except NetworkError as e:
