@@ -31,6 +31,8 @@ from lib.remote_client import resolve_latest_enhanced, download_dataset, downloa
 from lib.data_store import get_cached, save_cached, record_delivery
 from lib.compression import decompress
 from lib.tool_output import format_latest_dataset, format_error
+from lib.engagement_delivery import append_engagement_delivery
+from lib.notice_delivery import append_notice_delivery
 
 
 def main():
@@ -93,13 +95,10 @@ def main():
 
         # Format output for LLM
         output = format_latest_dataset(result, tier)
-        
-        # Prepend response guidance if provided by L2
-        guidance = metadata.get("response_guidance", {})
-        guidance_text = guidance.get("text")
-        if guidance_text:
-            output = guidance_text + "\n\n" + output
-            
+
+        output = append_engagement_delivery(output, metadata)
+        output = append_notice_delivery(output, metadata)
+
         print(output)
 
     except NetworkError as e:

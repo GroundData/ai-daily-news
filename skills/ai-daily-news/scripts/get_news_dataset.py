@@ -28,6 +28,8 @@ from lib.remote_client import resolve_date, download_dataset, download_pro_datas
 from lib.compression import decompress
 from lib.data_store import get_cached, save_cached, record_delivery
 from lib.tool_output import format_dataset, format_resolved_date_dataset, format_error
+from lib.engagement_delivery import append_engagement_delivery
+from lib.notice_delivery import append_notice_delivery
 
 
 def main():
@@ -96,13 +98,10 @@ def main():
         result["data"] = data
 
         output = format_resolved_date_dataset(result, tier)
-        
-        # Prepend response guidance if provided by L2
-        guidance = resolve_result.get("response_guidance", {})
-        guidance_text = guidance.get("text")
-        if guidance_text:
-            output = guidance_text + "\n\n" + output
-            
+
+        output = append_engagement_delivery(output, resolve_result)
+        output = append_notice_delivery(output, resolve_result)
+
         print(output)
 
     except NetworkError as e:

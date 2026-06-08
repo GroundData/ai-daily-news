@@ -9,22 +9,47 @@ Responsibilities:
 
 import json
 import os
-import urllib.request
 import urllib.error
+import urllib.request
 from typing import Optional
+
+from lib.schemas import CURRENT_VERSION, NetworkError, get_client_timezone
 
 DEFAULT_SERVICE_URL = os.getenv("AINEWS_SERVICE_URL", "https://api.ainewparadigm.cn")
 DEFAULT_TIMEOUT = 30  # Downloads may take longer
 
 
-def _build_headers(api_key: Optional[str] = None) -> dict:
+def _build_headers(
+    api_key: Optional[str] = None,
+    include_engagement: bool = True,
+    include_timezone: bool = False,
+) -> dict:
     headers = {
         "X-Client": "ai-daily-news-l3",
+        "X-Client-Version": CURRENT_VERSION,
         "Accept": "application/json",
     }
+    if include_engagement:
+        try:
+            from lib.engagement_state import get_client_capabilities, get_or_create_install_id
+
+            headers["X-Client-Install-Id"] = get_or_create_install_id()
+            headers["X-Client-Capabilities"] = get_client_capabilities()
+        except Exception:
+            # Engagement headers are best-effort. Never block core news requests.
+            pass
+    if include_timezone:
+        try:
+            headers["X-Client-Timezone"] = get_client_timezone()
+        except Exception:
+            pass
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     return headers
+
+
+def _read_json_response(resp) -> dict:
+    return json.loads(resp.read().decode("utf-8"))
 
 
 def fetch_manifest(
@@ -36,7 +61,7 @@ def fetch_manifest(
     try:
         req = urllib.request.Request(url, headers=_build_headers())
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            return _read_json_response(resp)
     except urllib.error.HTTPError as e:
         raise NetworkError(f"Manifest HTTP error: {e.code}")
     except Exception as e:
@@ -124,7 +149,7 @@ def invoke_capability(
     try:
         req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            return _read_json_response(resp)
     except urllib.error.HTTPError as e:
         raise NetworkError(f"Execute HTTP error: {e.code}")
     except Exception as e:
@@ -160,7 +185,7 @@ def resolve_latest(
     try:
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            return _read_json_response(resp)
     except urllib.error.HTTPError as e:
         if e.code == 401:
             raise NetworkError("Invalid or missing access token")
@@ -205,7 +230,7 @@ def resolve_latest_enhanced(
     try:
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            return _read_json_response(resp)
     except urllib.error.HTTPError as e:
         if e.code == 401:
             raise NetworkError("Invalid or missing access token")
@@ -249,7 +274,7 @@ def resolve_date(
     try:
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            return _read_json_response(resp)
     except urllib.error.HTTPError as e:
         if e.code == 401:
             raise NetworkError("Invalid or missing access token")
@@ -262,5 +287,33 @@ def resolve_date(
         raise NetworkError(f"Resolve date error: {e}")
 
 
-# Import errors from schemas
-from lib.schemas import NetworkError
+def submit_engagement(
+    payload: dict,
+    base_url: Optional[str] = None,
+    api_key: Optional[str] = None,
+    timeout: int = 20,
+) -> dict:
+    """Submit user feedback or a survey response to L2."""
+    url = f"{base_url or DEFAULT_SERVICE_URL}/v1/engagement/submit"
+    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    headers = _build_headers(api_key, include_engagement=True, include_timezone=True)
+    headers["Content-Type"] = "application/json"
+
+    try:
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return _read_json_response(resp)
+    except urllib.error.HTTPError as e:
+        try:
+            detail = e.read().decode("utf-8")
+        except Exception:
+            detail = ""
+        if e.code in (400, 422):
+            raise NetworkError(f"Engagement submit validation error: {detail or e.code}")
+        if e.code in (401, 403):
+            raise NetworkError(f"Engagement submit authorization error: {e.code}")
+        if e.code == 404:
+            raise NetworkError("Engagement submit endpoint not found")
+        raise NetworkError(f"Engagement submit HTTP error: {e.code}")
+    except Exception as e:
+        raise NetworkError(f"Engagement submit error: {e}")

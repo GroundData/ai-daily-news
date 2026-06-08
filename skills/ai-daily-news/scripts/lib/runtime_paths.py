@@ -44,6 +44,10 @@ def get_manifest_cache_path() -> Path:
     return get_runtime_cache_root() / "ai_news_manifest.json"
 
 
+def get_engagement_state_path() -> Path:
+    return get_runtime_cache_root() / "engagement_state.json"
+
+
 def get_bundled_manifest_path() -> Path:
     return _SCRIPTS_DIR / "data" / "ai_news_manifest.json"
 
