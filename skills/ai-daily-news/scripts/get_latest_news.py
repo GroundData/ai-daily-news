@@ -33,12 +33,22 @@ from lib.compression import decompress
 from lib.tool_output import format_latest_dataset, format_error
 from lib.engagement_delivery import append_engagement_delivery
 from lib.notice_delivery import append_notice_delivery
+from lib.agent_handoff_context import build_and_format_handoff_context
+from lib.growth_state import (
+    load_growth_state,
+    save_growth_state,
+    record_news_success,
+    select_growth_tip,
+    mark_tip_shown,
+)
+from lib.growth_tips import render_growth_tip
+from lib.preferences import load_preferences, has_preferences_set, format_preferences_for_agent
 
 
 def main():
     parser = argparse.ArgumentParser(description="Fetch latest available AI news dataset")
     parser.add_argument("--tier", default="guest", help="Data tier (default: guest)")
-    parser.add_argument("--base-url", default=None, help="L2 API base URL")
+    parser.add_argument("--base-url", default=None, help="AI Daily News API base URL")
     parser.add_argument("--timezone", default=None, help="Client timezone (IANA format, e.g., America/New_York)")
     args = parser.parse_args()
 
@@ -96,8 +106,41 @@ def main():
         # Format output for LLM
         output = format_latest_dataset(result, tier)
 
+        # Load growth state and record usage
+        growth_state = load_growth_state()
+        growth_state = record_news_success(growth_state, scope="latest")
+        save_growth_state(growth_state)
+
+        # Load preferences
+        preferences = load_preferences()
+        prefs_set = has_preferences_set(preferences)
+
+        # If preferences are set, append preference application context
+        # BEFORE rendering news so Agent knows how to filter/sort
+        if prefs_set:
+            output += "\n\n---\n\n"
+            output += format_preferences_for_agent(preferences)
+            output += "\n\n---\n\n"
+
+        # Select and append growth tip (onboarding, preference, automation, or workflow hint)
+        prefs_set = has_preferences_set(preferences)
+        tip_type = select_growth_tip(growth_state, prefs_set)
+
+        if tip_type:
+            tip_content = render_growth_tip(tip_type)
+            if tip_content:
+                output += tip_content
+                # Mark suggestion shown to trigger cooldown
+                growth_state = mark_tip_shown(growth_state, tip_type)
+                save_growth_state(growth_state)
+
         output = append_engagement_delivery(output, metadata)
         output = append_notice_delivery(output, metadata)
+
+        # Append agent handoff context (for continuation)
+        data_date = metadata.get("resolved_source_date", metadata.get("resolved_date", ""))
+        handoff_context = build_and_format_handoff_context(data_date, preferences)
+        output += handoff_context
 
         print(output)
 

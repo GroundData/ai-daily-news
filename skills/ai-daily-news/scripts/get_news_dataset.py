@@ -30,6 +30,16 @@ from lib.data_store import get_cached, save_cached, record_delivery
 from lib.tool_output import format_dataset, format_resolved_date_dataset, format_error
 from lib.engagement_delivery import append_engagement_delivery
 from lib.notice_delivery import append_notice_delivery
+from lib.agent_handoff_context import build_and_format_handoff_context
+from lib.growth_state import (
+    load_growth_state,
+    save_growth_state,
+    record_news_success,
+    select_growth_tip,
+    mark_tip_shown,
+)
+from lib.growth_tips import render_growth_tip
+from lib.preferences import load_preferences, has_preferences_set, format_preferences_for_agent
 
 
 def main():
@@ -39,7 +49,7 @@ def main():
     )
     parser.add_argument("--date", required=True, help="Date in YYYY-MM-DD format (required, interpreted as local date)")
     parser.add_argument("--tier", default="guest", help="Data tier (default: guest)")
-    parser.add_argument("--base-url", default=None, help="L2 API base URL")
+    parser.add_argument("--base-url", default=None, help="AI Daily News API base URL")
     parser.add_argument("--timezone", default=None, help="Client timezone (IANA format, e.g., America/New_York)")
     args = parser.parse_args()
 
@@ -99,8 +109,33 @@ def main():
 
         output = format_resolved_date_dataset(result, tier)
 
+        # Load growth state and record usage
+        growth_state = load_growth_state()
+        growth_state = record_news_success(growth_state, scope="date")
+        save_growth_state(growth_state)
+
+        # Load preferences for handoff context
+        preferences = load_preferences()
+
+        # Select and append next step suggestions (same logic as latest news for consistent coverage)
+        prefs_set = has_preferences_set(preferences)
+        tip_type = select_growth_tip(growth_state, prefs_set)
+
+        if tip_type:
+            tip_content = render_growth_tip(tip_type)
+            if tip_content:
+                output += tip_content
+                # Mark suggestion shown to trigger cooldown
+                growth_state = mark_tip_shown(growth_state, tip_type)
+                save_growth_state(growth_state)
+
         output = append_engagement_delivery(output, resolve_result)
         output = append_notice_delivery(output, resolve_result)
+
+        # Append agent handoff context (for continuation)
+        data_date = resolve_result.get("resolved_source_date", "")
+        handoff_context = build_and_format_handoff_context(data_date, preferences)
+        output += handoff_context
 
         print(output)
 
