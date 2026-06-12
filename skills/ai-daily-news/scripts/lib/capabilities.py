@@ -219,8 +219,8 @@ def _build_offline_manifest() -> dict:
         "ttl_seconds": 300,
         "offline": True,
         "client_policy": {
-            "latest_version": "v1.1.2",
-            "min_supported_version": "v1.1.2",
+            "latest_version": "v1.3.0",
+            "min_supported_version": "v1.3.0",
             "upgrade_url": "https://www.ainewparadigm.cn/",
             "upgrade_message": "",
         },
