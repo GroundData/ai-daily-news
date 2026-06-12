@@ -8,7 +8,9 @@ Responsibilities:
 """
 
 import json
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Optional, Tuple
+
+from lib.engagement_delivery import load_engagement_state, render_engagement_item, select_engagement_item
 
 
 def _format_scalar(value) -> str:
@@ -333,6 +335,20 @@ def _render_dataset_content(data: dict) -> list[str]:
     return _render_dataset_content_new(data)
 
 
+def _render_engagement_section(result: dict) -> List[str]:
+    """Render the selected engagement section for automation-safe markdown."""
+    state = load_engagement_state()
+    item = select_engagement_item(result.get("engagement_delivery"), state)
+    if not item:
+        return []
+
+    rendered = render_engagement_item(item)
+    if not rendered:
+        return []
+
+    return [rendered, ""]
+
+
 def format_dataset(data: dict, date: str, tier: str) -> str:
     """
     Format news_dataset.v1 into Markdown output.
@@ -449,5 +465,177 @@ def format_resolved_date_dataset(result: dict, tier: str) -> str:
     lines.append("")
 
     lines.extend(_render_dataset_content(data))
+
+    return "\n".join(lines)
+
+
+def _safe_str(value: Any) -> str:
+    if not isinstance(value, str):
+        return ""
+    return value.replace("\r", " ").strip()
+
+
+def _render_automation_preferences(preferences: Optional[dict], summary: str = "") -> List[str]:
+    if not isinstance(preferences, dict):
+        return [
+            "- Preference Summary: No preferences set",
+            "- Preferences Set: false",
+        ]
+
+    def _format_list(name: str, items: Any) -> str:
+        if not isinstance(items, list) or not items:
+            return f"- {name}: (not set)"
+        normalized = [str(item) for item in items]
+        return f"- {name}: {', '.join(normalized)}"
+
+    lines = [
+        f"- Preference Summary: {summary or 'No preferences set'}",
+        _format_list("Preferred Topics", preferences.get("topics")),
+        _format_list("Preferred Entities", preferences.get("entities")),
+        _format_list("Preferred Source Types", preferences.get("source_types")),
+        _format_list("User Role Perspective", preferences.get("roles")),
+        _format_list("Exclude Topics", preferences.get("exclude_topics")),
+        _format_list("Exclude Entities", preferences.get("exclude_entities")),
+        f"- Preferred Depth: {preferences.get('depth', 'standard')}",
+        f"- Output Format: {preferences.get('output_format', 'standard')}",
+        f"- Language: {preferences.get('language', 'zh-CN')}",
+        f"- Strict Filtering: {bool(preferences.get('strict_filtering', False))}",
+    ]
+
+    notes = _safe_str(preferences.get("notes"))
+    if notes:
+        lines.append(f"- Additional Notes: {notes}")
+
+    return lines
+
+
+def _extract_notice_lines(result: dict) -> Tuple[List[str], List[str]]:
+    sponsor_lines: List[str] = []
+    update_lines: List[str] = []
+
+    delivery = result.get("notice_delivery")
+    if not isinstance(delivery, dict):
+        return sponsor_lines, update_lines
+
+    items = delivery.get("items")
+    if not isinstance(items, list):
+        return sponsor_lines, update_lines
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+
+        kind = item.get("kind")
+        payload = item.get("payload")
+        if not isinstance(payload, dict):
+            payload = {}
+
+        url = _safe_str(payload.get("url"))
+
+        if kind == "sponsor_notice":
+            brand = _safe_str(payload.get("brand"))
+            message = _safe_str(payload.get("message"))
+            text = brand or message
+            if not text:
+                continue
+            if url:
+                sponsor_lines.append(f"- {text} ({url})")
+            else:
+                sponsor_lines.append(f"- {text}")
+            continue
+
+        if kind == "upgrade_notice":
+            message = _safe_str(payload.get("message")) or "Update available."
+            min_version = _safe_str(payload.get("min_version_to_hide"))
+            suffix = f" (min_version_to_hide: {min_version})" if min_version else ""
+            if url:
+                update_lines.append(f"- {message}{suffix} ({url})")
+            else:
+                update_lines.append(f"- {message}{suffix}")
+
+    return sponsor_lines, update_lines
+
+
+def _render_dataset_ads(data: dict) -> List[str]:
+    ads = data.get("_ads")
+    if not isinstance(ads, dict) or not ads:
+        return ["- None"]
+    lines: List[str] = []
+    for field_path, field_value in _flatten_markdown_fields(ads):
+        lines.append(f"- {field_path}: {_format_scalar(field_value)}")
+    return lines
+
+
+def format_automation_safe_dataset(
+    result: dict,
+    tier: str,
+    query_type: str,
+    preferences: Optional[dict] = None,
+    preference_summary: str = "",
+) -> str:
+    """
+    Format automation-safe markdown for scheduled task generation.
+
+    Output keeps news content, preferences, sponsor/update notices, and data dictionary
+    while omitting interactive-only guidance from caller scripts.
+    """
+    data = result.get("data", {})
+    lines: List[str] = [
+        "# AI Daily News Automation Input",
+        "",
+        "This markdown is intended for scheduled-task rendering and delivery.",
+        f"- Query Type: {query_type}",
+        f"- Tier: {tier}",
+        "",
+    ]
+
+    if query_type == "latest":
+        lines.append("## Freshness Information")
+        lines.append("")
+        lines.append(f"- Notice: {result.get('display_notice', result.get('notice_for_user', ''))}")
+        lines.append(f"- Generated At (Local): {result.get('generated_at_local', '')}")
+        lines.append(f"- Your Timezone: {result.get('client_timezone', '')}")
+        lines.append(f"- Resolved Canonical Date: {result.get('resolved_source_date', result.get('resolved_date', ''))}")
+    else:
+        lines.append("## Date Resolution Information")
+        lines.append("")
+        lines.append(f"- Notice: {result.get('display_notice', '')}")
+        lines.append(f"- Requested Local Date: {result.get('requested_local_date', '')}")
+        lines.append(f"- Your Timezone: {result.get('client_timezone', '')}")
+        lines.append(f"- Generated At (Local): {result.get('generated_at_local', '')}")
+        lines.append(f"- Resolved Canonical Date: {result.get('resolved_source_date', '')}")
+
+    lines.extend(_render_engagement_section(result))
+
+    lines.append("## Local User Preferences")
+    lines.append("")
+    lines.extend(_render_automation_preferences(preferences, preference_summary))
+    lines.append("")
+
+    lines.append("## Dataset Content")
+    lines.append("")
+    lines.extend(_render_dataset_content(data))
+    lines.append("")
+
+    lines.append("## Sponsor Data")
+    lines.append("")
+    lines.extend(_render_dataset_ads(data))
+    lines.append("")
+
+    sponsor_lines, update_lines = _extract_notice_lines(result)
+
+    lines.append("## Sponsor Information")
+    lines.append("")
+    lines.append("Rendering instruction: if sponsor information is present below, keep it visible in the same final reply as the news result.")
+    lines.append("")
+    lines.extend(sponsor_lines or ["- None"])
+    lines.append("")
+
+    lines.append("## Update Available")
+    lines.append("")
+    lines.append("Rendering instruction: if an update notice is present below, include it in the same final reply after the news content.")
+    lines.append("")
+    lines.extend(update_lines or ["- None"])
+    lines.append("")
 
     return "\n".join(lines)

@@ -10,7 +10,7 @@ Responsibilities:
 import json
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from lib.runtime_paths import get_engagement_state_path
 
@@ -30,6 +30,11 @@ _EMPTY_STATE = {
     "shown_notice_delivery_ids": [],
     "submitted_delivery_ids": [],
     "dismissed_delivery_ids": [],
+    "upgrade_prompt_v2": {
+        "last_reminded_version": None,
+        "reminder_count": 0,
+        "next_allowed_at": None,
+    },
 }
 
 
@@ -70,9 +75,48 @@ def _normalize_id_list(value) -> list[str]:
 
 
 def _new_state() -> dict:
-    state = dict(_EMPTY_STATE)
-    state["install_id"] = str(uuid.uuid4())
-    return state
+    return {
+        "install_id": str(uuid.uuid4()),
+        "first_feedback_hint_shown": False,
+        "feedback_prompt_cooldown_until": None,
+        "survey_cooldown_until": None,
+        "upgrade_notice_cooldown_until": None,
+        "shown_delivery_ids": [],
+        "shown_notice_delivery_ids": [],
+        "submitted_delivery_ids": [],
+        "dismissed_delivery_ids": [],
+        "upgrade_prompt_v2": {
+            "last_reminded_version": None,
+            "reminder_count": 0,
+            "next_allowed_at": None,
+        },
+    }
+
+
+def _normalize_upgrade_prompt_v2(raw: Any) -> dict:
+    if not isinstance(raw, dict):
+        return {
+            "last_reminded_version": None,
+            "reminder_count": 0,
+            "next_allowed_at": None,
+        }
+
+    last_reminded = raw.get("last_reminded_version")
+    last_reminded_version = last_reminded if isinstance(last_reminded, str) and last_reminded.strip() else None
+
+    try:
+        reminder_count = max(0, int(raw.get("reminder_count", 0)))
+    except (ValueError, TypeError):
+        reminder_count = 0
+
+    next_allowed = raw.get("next_allowed_at")
+    next_allowed_at = next_allowed if isinstance(next_allowed, str) and _parse_time(next_allowed) else None
+
+    return {
+        "last_reminded_version": last_reminded_version,
+        "reminder_count": reminder_count,
+        "next_allowed_at": next_allowed_at,
+    }
 
 
 def _normalize_state(raw) -> dict:
@@ -94,6 +138,7 @@ def _normalize_state(raw) -> dict:
         state[key] = value if isinstance(value, str) and _parse_time(value) else None
     for key in ("shown_delivery_ids", "shown_notice_delivery_ids", "submitted_delivery_ids", "dismissed_delivery_ids"):
         state[key] = _normalize_id_list(raw.get(key))
+    state["upgrade_prompt_v2"] = _normalize_upgrade_prompt_v2(raw.get("upgrade_prompt_v2"))
     return state
 
 
@@ -218,4 +263,61 @@ def should_show_first_feedback_hint(state: dict) -> bool:
 def mark_first_feedback_hint_shown(state: dict) -> dict:
     state = _normalize_state(state)
     state["first_feedback_hint_shown"] = True
+    return state
+
+
+# --- Upgrade Prompt V2 State Management ---
+
+
+def get_upgrade_prompt_v2_state(state: dict) -> dict:
+    """Get normalized V2 upgrade prompt state."""
+    state = _normalize_state(state)
+    upgrade_state = state.get("upgrade_prompt_v2")
+    if not isinstance(upgrade_state, dict):
+        upgrade_state = {
+            "last_reminded_version": None,
+            "reminder_count": 0,
+            "next_allowed_at": None,
+        }
+        state["upgrade_prompt_v2"] = upgrade_state
+    return upgrade_state
+
+
+def is_upgrade_prompt_v2_in_cooldown(state: dict, latest_version: str, now: Optional[datetime] = None) -> bool:
+    """Check if upgrade prompt v2 should be suppressed due to cooldown or same version."""
+    upgrade_state = get_upgrade_prompt_v2_state(state)
+
+    # New version: reset cooldown and counter
+    if upgrade_state.get("last_reminded_version") != latest_version:
+        return False
+
+    # Check cooldown
+    next_allowed = _parse_time(upgrade_state.get("next_allowed_at"))
+    if not next_allowed:
+        return False
+    return next_allowed > (now or _utc_now())
+
+
+def calculate_upgrade_prompt_cooldown(reminder_count: int, initial_days: int = 3, increment_days: int = 3, max_days: int = 21) -> int:
+    """Calculate incremental cooldown days."""
+    cooldown = initial_days + (reminder_count * increment_days)
+    return min(cooldown, max_days)
+
+
+def mark_upgrade_prompt_v2_shown(state: dict, latest_version: str, initial_days: int = 3, increment_days: int = 3, max_days: int = 21) -> dict:
+    """Mark V2 upgrade prompt as shown and update cooldown."""
+    state = _normalize_state(state)
+    upgrade_state = get_upgrade_prompt_v2_state(state)
+
+    # Reset counter for new version
+    if upgrade_state.get("last_reminded_version") != latest_version:
+        upgrade_state["reminder_count"] = 0
+        upgrade_state["last_reminded_version"] = latest_version
+
+    # Calculate next cooldown
+    cooldown_days = calculate_upgrade_prompt_cooldown(upgrade_state["reminder_count"], initial_days, increment_days, max_days)
+    upgrade_state["next_allowed_at"] = _cooldown_until(cooldown_days)
+    upgrade_state["reminder_count"] += 1
+
+    state["upgrade_prompt_v2"] = upgrade_state
     return state

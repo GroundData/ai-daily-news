@@ -133,6 +133,32 @@ You: "What can you do?"
 
 ***
 
+## 🧩 Extended Features
+
+These features are designed to work with the same AI news dataset, without changing the basic way you ask for news.
+
+### User Preferences
+- Save local preferences for topics, entities, source types, roles, depth, language, and output format
+- Use those preferences to steer ranking, filtering, and presentation style in later responses
+- Keep preferences local to the skill runtime so the same user can get more consistent results over time
+
+### Survey and Feedback
+- Show survey blocks inline when the service provides them
+- Keep feedback prompts visible after the main news result when available
+- Let the user reply naturally so the agent can submit the response back to the service
+
+### Workflow Templates
+- Reorganize the same news data into different output forms for different purposes
+- Support purpose-specific formats such as knowledge base capture, tech radar, product opportunity scanning, and content creation materials
+- Keep the workflow body focused on the chosen structure while preserving required visible blocks such as sponsor or update notices when present
+
+### Scheduled Tasks
+- Support scheduled delivery through the host agent’s automation flow
+- Use the latest or date-specific news output as the basis for a recurring news push
+- Keep the scheduled task input stable so the host agent can render and deliver the final result consistently
+
+***
+
 ## 🤖 Supported Platforms
 
 ✅ **OpenClaw**\

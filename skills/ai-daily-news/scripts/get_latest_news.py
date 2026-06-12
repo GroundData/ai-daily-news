@@ -30,7 +30,7 @@ from lib.schemas import NetworkError, get_client_timezone
 from lib.remote_client import resolve_latest_enhanced, download_dataset, download_pro_dataset
 from lib.data_store import get_cached, save_cached, record_delivery
 from lib.compression import decompress
-from lib.tool_output import format_latest_dataset, format_error
+from lib.tool_output import format_latest_dataset, format_error, format_automation_safe_dataset
 from lib.engagement_delivery import append_engagement_delivery
 from lib.notice_delivery import append_notice_delivery
 from lib.agent_handoff_context import build_and_format_handoff_context
@@ -42,7 +42,12 @@ from lib.growth_state import (
     mark_tip_shown,
 )
 from lib.growth_tips import render_growth_tip
-from lib.preferences import load_preferences, has_preferences_set, format_preferences_for_agent
+from lib.preferences import (
+    load_preferences,
+    has_preferences_set,
+    format_preferences_for_agent,
+    get_preference_summary,
+)
 
 
 def main():
@@ -50,6 +55,11 @@ def main():
     parser.add_argument("--tier", default="guest", help="Data tier (default: guest)")
     parser.add_argument("--base-url", default=None, help="AI Daily News API base URL")
     parser.add_argument("--timezone", default=None, help="Client timezone (IANA format, e.g., America/New_York)")
+    parser.add_argument(
+        "--automation-safe",
+        action="store_true",
+        help="Output automation-safe markdown for scheduled task generation",
+    )
     args = parser.parse_args()
 
     tier = args.tier
@@ -103,9 +113,6 @@ def main():
         # Record delivery using the canonical date
         record_delivery(resolved_source_date, tier, record_count)
 
-        # Format output for LLM
-        output = format_latest_dataset(result, tier)
-
         # Load growth state and record usage
         growth_state = load_growth_state()
         growth_state = record_news_success(growth_state, scope="latest")
@@ -113,6 +120,22 @@ def main():
 
         # Load preferences
         preferences = load_preferences()
+        preference_summary = get_preference_summary(preferences)
+
+        # Automation-safe output for scheduled-task setup/runtime.
+        if args.automation_safe:
+            output = format_automation_safe_dataset(
+                result,
+                tier,
+                query_type="latest",
+                preferences=preferences,
+                preference_summary=preference_summary,
+            )
+            print(output)
+            return
+
+        # Format output for interactive LLM flow
+        output = format_latest_dataset(result, tier)
         prefs_set = has_preferences_set(preferences)
 
         # If preferences are set, append preference application context
@@ -121,6 +144,8 @@ def main():
             output += "\n\n---\n\n"
             output += format_preferences_for_agent(preferences)
             output += "\n\n---\n\n"
+
+        output = append_engagement_delivery(output, metadata)
 
         # Select and append growth tip (onboarding, preference, automation, or workflow hint)
         prefs_set = has_preferences_set(preferences)
@@ -134,7 +159,6 @@ def main():
                 growth_state = mark_tip_shown(growth_state, tip_type)
                 save_growth_state(growth_state)
 
-        output = append_engagement_delivery(output, metadata)
         output = append_notice_delivery(output, metadata)
 
         # Append agent handoff context (for continuation)

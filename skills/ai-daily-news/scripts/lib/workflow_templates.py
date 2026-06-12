@@ -23,6 +23,7 @@ WORKFLOW_TEMPLATES = [
         "id": "ai_coding_radar",
         "title": "AI Coding Tech Radar",
         "description": "Continuously track AI Coding, Agent, open source models, and developer tools. Suitable for engineers, technical leads, and AI Infra practitioners.",
+        "allow_emoji": False,
         "default_topics": ["agent", "ai_coding", "open_source", "infrastructure"],
         "target_roles": ["engineer", "founder"],
         "focus_fields": [
@@ -43,6 +44,7 @@ WORKFLOW_TEMPLATES = [
         "id": "content_creation_materials",
         "title": "Content Creation Materials",
         "description": "Organize daily AI news into materials suitable for blogs, newsletters, communities, or short content scripts. Suitable for content creators, media, and operations.",
+        "allow_emoji": True,
         "default_topics": ["product", "trend", "announcement"],
         "target_roles": ["creator", "general"],
         "focus_fields": [
@@ -62,6 +64,7 @@ WORKFLOW_TEMPLATES = [
         "id": "knowledge_base_capture",
         "title": "Knowledge Base Capture",
         "description": "Organize valuable AI news into summaries suitable for knowledge bases, note systems, or research libraries. Suitable for researchers, analysts, and lifelong learners.",
+        "allow_emoji": True,
         "default_topics": ["research", "safety", "alignment", "breakthrough"],
         "target_roles": ["researcher", "investor"],
         "focus_fields": [
@@ -81,6 +84,7 @@ WORKFLOW_TEMPLATES = [
         "id": "product_opportunity_scan",
         "title": "Product Opportunity Scan",
         "description": "Extract product opportunities, competitor changes, and user demand signals from daily news. Suitable for product managers, entrepreneurs, and product leads.",
+        "allow_emoji": False,
         "default_topics": ["product", "launch", "competition", "user_need"],
         "target_roles": ["product", "founder"],
         "focus_fields": [
@@ -101,6 +105,7 @@ WORKFLOW_TEMPLATES = [
         "id": "investment_strategy_brief",
         "title": "Investment/Strategy Brief",
         "description": "Focus on fundraising, M&A, company news, commercialization, and regulation. Suitable for investors, strategy analysts, and corporate decision-makers.",
+        "allow_emoji": False,
         "default_topics": ["fundraising", "partnership", "regulation", "market"],
         "target_roles": ["investor", "founder"],
         "focus_fields": [
@@ -179,16 +184,43 @@ def render_workflow_template(
     preferences: Optional[dict] = None,
 ) -> str:
     """
-    Render template as user-readable introduction and usage guide.
+    Render template as a prompt-style formatting contract.
     """
+    allow_emoji = bool(template.get("allow_emoji", False))
+    section_divider = "-----"
+
     lines = [
-        f"## 📋 Workflow Template: {template['title']}",
+        f"## Workflow Template: {template['title']}",
         "",
         template["description"],
         "",
+        "### Formatting Contract",
+        "",
+        "- This template is a strong formatting instruction, not a loose suggestion.",
+        f"- Use section dividers exactly as `{section_divider}` between major sections.",
+        f"- Use the same divider exactly as `{section_divider}` between subsections inside a section.",
+        "- Do not add extra dividers inside bullet items or paragraphs.",
+        "- The workflow sections below define only the main content body.",
+        "- Survey, Feedback, Sponsor, and Update Available are carry-over blocks, not workflow analysis sections.",
+        "- Do not merge carry-over blocks into the workflow sections above.",
+    ]
+
+    if allow_emoji:
+        lines.extend([
+            "- Emoji are allowed in headings and section labels for this template.",
+            "- Keep emoji sparse and readable; do not decorate every line.",
+        ])
+    else:
+        lines.extend([
+            "- Do not use emoji in headings, bullets, or section labels for this template.",
+            "- Keep the output restrained and scan-friendly.",
+        ])
+
+    lines.extend([
+        "",
         "### Applicable Scenarios",
         "",
-    ]
+    ])
 
     for tag in template.get("tags", []):
         lines.append(f"- {tag}")
@@ -198,12 +230,35 @@ def render_workflow_template(
     lines.append("")
 
     for section in template.get("section_structure", []):
-        lines.append(f"- **{section['name']}**")
+        lines.append(section_divider)
+        lines.append(f"#### {section['name']}")
+        lines.append(f"- Filter hint: `{section['filter']}`")
+        lines.append("")
 
     lines.append("")
     lines.append("### Output Format")
     lines.append("")
-    lines.append(f"- Default: {template['output_format']}")
+    lines.append(f"- Default format: `{template['output_format']}`")
+    lines.append("- Preserve the section order defined above.")
+    lines.append("- Keep subsection content under each heading concise and grouped.")
+    lines.append("- After the workflow body is complete, append carry-over blocks in their own standalone sections or footer blocks.")
+
+    lines.append("")
+    lines.append("### Required Carry-Over Blocks")
+    lines.append("")
+    lines.append("- If a `## Survey` section exists in the source input, keep it visible after the workflow body.")
+    lines.append("- If a `## Feedback` section exists in the source input, keep it visible after the workflow body.")
+    lines.append("- If a `## Update Available` section exists in the source input, keep it visible after the workflow body.")
+    lines.append("- If sponsor attribution exists in the source input, keep it as a visible standalone footer at the very end of the output.")
+    lines.append("- Do not omit carry-over blocks as optional footer text. If they are missing, the product experience is broken.")
+
+    lines.append("")
+    lines.append("### Required Footer")
+    lines.append("")
+    lines.append("- Sponsor attribution, when present in the source input, must be appended after all workflow sections.")
+    lines.append("- Do not absorb sponsor text into summary paragraphs, analysis sections, notes, or bullet lists.")
+    lines.append("- Keep the sponsor brand and URL clearly visible in a standalone footer block.")
+    lines.append(f"- Place the sponsor footer after the final `{section_divider}` divider.")
 
     if preferences:
         lines.append("")
@@ -217,9 +272,9 @@ def render_workflow_template(
             lines.append(f"- Depth: {preferences['depth']}")
 
     lines.append("")
-    lines.append("---")
+    lines.append(section_divider)
     lines.append("")
-    lines.append("**Next step**: I can help you organize today's news based on this template, or would you like to adjust any parts?")
+    lines.append("Next step: organize today's news using this template, then keep the output in the exact structure above.")
 
     return "\n".join(lines)
 

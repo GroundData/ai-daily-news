@@ -15,9 +15,11 @@ from lib.engagement_state import (
     has_seen_delivery,
     is_feedback_prompt_in_cooldown,
     is_survey_in_cooldown,
+    is_upgrade_prompt_v2_in_cooldown,
     load_engagement_state,
     mark_delivery_shown,
     mark_first_feedback_hint_shown,
+    mark_upgrade_prompt_v2_shown,
     save_engagement_state,
     should_show_first_feedback_hint,
 )
@@ -34,12 +36,25 @@ def append_engagement_delivery(output: str, resolve_result: dict) -> str:
         if item:
             rendered = render_engagement_item(item)
             if rendered:
-                state = mark_delivery_shown(
-                    state,
-                    item.get("delivery_id", ""),
-                    item.get("kind", ""),
-                    _cooldown_days(item),
-                )
+                kind = item.get("kind", "")
+                if kind == "upgrade_prompt":
+                    # V2 upgrade prompt uses incremental cooldown
+                    payload = item.get("payload") or {}
+                    cooldown_config = payload.get("cooldown_config") or {}
+                    state = mark_upgrade_prompt_v2_shown(
+                        state,
+                        payload.get("latest_version", ""),
+                        initial_days=cooldown_config.get("initial_days", 3),
+                        increment_days=cooldown_config.get("increment_days", 3),
+                        max_days=cooldown_config.get("max_days", 21),
+                    )
+                else:
+                    state = mark_delivery_shown(
+                        state,
+                        item.get("delivery_id", ""),
+                        kind,
+                        _cooldown_days(item),
+                    )
                 save_engagement_state(state)
                 return output.rstrip() + "\n\n" + rendered.strip() + "\n"
 
@@ -68,6 +83,8 @@ def select_engagement_item(delivery: Any, state: dict) -> Optional[dict]:
         kind = item.get("kind")
         if kind == "survey" and _is_valid_survey(item, state):
             return item
+        if kind == "upgrade_prompt" and _is_valid_upgrade_prompt(item, state):
+            return item
         if kind == "feedback_prompt" and _is_valid_feedback_prompt(item, state):
             return item
     return None
@@ -79,6 +96,8 @@ def render_engagement_item(item: dict) -> str:
         return render_feedback_prompt(item)
     if kind == "survey":
         return render_survey(item)
+    if kind == "upgrade_prompt":
+        return render_upgrade_prompt(item)
     return ""
 
 
@@ -88,6 +107,8 @@ def render_feedback_prompt(item: dict) -> str:
         return ""
     return (
         "---\n\n"
+        "Rendering instruction: keep the Feedback block below in the same reply as the news result, after the main news content. "
+        "Do not omit it.\n\n"
         "## Feedback\n\n"
         "If this AI Daily News result missed an important source, topic, or story, "
         "tell me in natural language and I can submit your feedback."
@@ -101,9 +122,12 @@ def render_survey(item: dict) -> str:
     lines = [
         "---",
         "",
-        f"## {title}",
+        "Rendering instruction: keep the Survey block below in the same reply as the news result, immediately after the main news content. "
+        "Do not omit it. Do not rewrite the questions or answer options.",
         "",
-        "We’re improving AI Daily News. If you’d like to answer, reply with your choices and I can submit them.",
+        "## Survey",
+        "",
+        f"### {title}",
         "",
     ]
 
@@ -125,6 +149,8 @@ def render_survey(item: dict) -> str:
             lines.append("   - Free-text answer")
         lines.append("")
 
+    lines.append("If you'd like to answer, reply with your choices and I can submit them.")
+    lines.append("")
     lines.append("To submit your answer, just ask me to submit this survey response.")
     return "\n".join(lines)
 
@@ -132,6 +158,7 @@ def render_survey(item: dict) -> str:
 def _render_first_feedback_hint() -> str:
     return (
         "---\n\n"
+        "Rendering instruction: keep the feedback hint below visible after the news result when it is present.\n\n"
         "Feedback is welcome: if you notice missing AI news, want more sources, or find a bug, "
         "tell me in natural language and I can submit it."
     )
@@ -209,10 +236,56 @@ def _safe_text(value: Any) -> str:
         return ""
     return value.replace("\r", " ").strip()
 
-    return max(1, value)
+
+# --- Upgrade Prompt V2 ---
 
 
-def _safe_text(value: Any) -> str:
-    if not isinstance(value, str):
-        return ""
-    return value.replace("\r", " ").strip()
+def _is_valid_upgrade_prompt(item: dict, state: dict) -> bool:
+    payload = item.get("payload") or {}
+    latest_version = payload.get("latest_version")
+    if not latest_version:
+        return False
+
+    delivery_id = item.get("delivery_id")
+    if has_seen_delivery(state, delivery_id):
+        return False
+
+    if is_upgrade_prompt_v2_in_cooldown(state, latest_version):
+        return False
+
+    return True
+
+
+def render_upgrade_prompt(item: dict) -> str:
+    payload = item.get("payload") or {}
+    message = _safe_text(payload.get("message")) or "A new version is available."
+    changelog = _safe_text(payload.get("changelog")) or ""
+    url = _safe_text(payload.get("url"))
+    latest_version = _safe_text(payload.get("latest_version"))
+
+    lines = [
+        "---",
+        "",
+        "Rendering instruction: keep the Update Available block below in the same reply as the news result after the main news content. "
+        "Do not silently drop it.",
+        "",
+        "## Update Available",
+        "",
+        message,
+    ]
+
+    if latest_version:
+        lines.append("")
+        lines.append(f"Latest version: {latest_version}")
+
+    if changelog:
+        lines.append("")
+        lines.append("**What's New:**")
+        lines.append(changelog)
+
+    if url:
+        lines.append("")
+        lines.append(f"Download: {url}")
+
+    lines.append("")
+    return "\n".join(lines)
