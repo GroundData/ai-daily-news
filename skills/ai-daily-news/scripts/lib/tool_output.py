@@ -556,6 +556,90 @@ def _extract_notice_lines(result: dict) -> Tuple[List[str], List[str]]:
     return sponsor_lines, update_lines
 
 
+def format_context_only_dataset(
+    result: dict,
+    tier: str,
+    query_type: str,
+    preferences: Optional[dict] = None,
+    preference_summary: str = "",
+) -> str:
+    """
+    Format context-only markdown for loading news data into conversation context only.
+
+    This mode is intended for isolated session continuation scenarios where the user
+    wants to ask follow-up questions about previously delivered scheduled news,
+    but does NOT want the news to be rendered again as a user-facing response.
+
+    Output includes:
+    - Freshness/date resolution metadata
+    - Full dataset content (for LLM context)
+    - Local user preferences
+    - Data dictionary
+    - Agent handoff context
+
+    Output EXCLUDES:
+    - Engagement content (survey, feedback prompts)
+    - Growth tips / onboarding suggestions
+    - Notice delivery (upgrade, sponsor)
+    - Sponsor ads
+    - Rendering instructions
+    """
+    data = result.get("data", {})
+    lines: List[str] = [
+        "# AI Daily News - Context Only (Do NOT Render to User)",
+        "",
+        "IMPORTANT: This is context data for the Agent/LLM only. Do NOT render this content to the user.",
+        "This data is loaded to provide context for follow-up questions about news delivered earlier.",
+        f"- Query Type: {query_type}",
+        f"- Tier: {tier}",
+        "",
+    ]
+
+    if query_type == "latest":
+        lines.append("## Freshness Information (Context Only)")
+        lines.append("")
+        lines.append(f"- Notice: {result.get('display_notice', result.get('notice_for_user', ''))}")
+        lines.append(f"- Generated At (Local): {result.get('generated_at_local', '')}")
+        lines.append(f"- Your Timezone: {result.get('client_timezone', '')}")
+        lines.append(f"- Resolved Canonical Date: {result.get('resolved_source_date', result.get('resolved_date', ''))}")
+    else:
+        lines.append("## Date Resolution Information (Context Only)")
+        lines.append("")
+        lines.append(f"- Notice: {result.get('display_notice', '')}")
+        lines.append(f"- Requested Local Date: {result.get('requested_local_date', '')}")
+        lines.append(f"- Your Timezone: {result.get('client_timezone', '')}")
+        lines.append(f"- Generated At (Local): {result.get('generated_at_local', '')}")
+        lines.append(f"- Resolved Canonical Date: {result.get('resolved_source_date', '')}")
+
+    lines.append("")
+    lines.append("## Local User Preferences (Context Only)")
+    lines.append("")
+    lines.extend(_render_automation_preferences(preferences, preference_summary))
+    lines.append("")
+
+    lines.append("## Dataset Content (Context Only)")
+    lines.append("")
+    lines.extend(_render_dataset_content(data))
+    lines.append("")
+
+    lines.append("## Data Dictionary (Context Only)")
+    lines.append("")
+    lines.extend(_render_data_dictionary(data))
+    lines.append("")
+
+    lines.append("## Agent Handoff Instructions (Context Only)")
+    lines.append("")
+    lines.append("The user may ask follow-up questions about this news data.")
+    lines.append("Use the dataset content above to answer their questions.")
+    lines.append("Do NOT mention that you 'loaded context' - simply answer based on the news data.")
+    lines.append("Available workflows: AI Coding Tech Radar, Content Creation Materials, Knowledge Base Capture, Product Opportunity Scan, Investment/Strategy Brief")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
 def _render_dataset_ads(data: dict) -> List[str]:
     ads = data.get("_ads")
     if not isinstance(ads, dict) or not ads:
@@ -623,6 +707,23 @@ def format_automation_safe_dataset(
     lines.append("")
 
     sponsor_lines, update_lines = _extract_notice_lines(result)
+    
+    lines.append("---")
+    lines.append("")
+    lines.append("## 💡 Have follow-up questions?")
+    lines.append("")
+    lines.append("If you want to ask questions about this news later (e.g., \"Tell me more about the Gemini updates\"):")
+    lines.append("")
+    lines.append("**Step 1:** In your new conversation, run this command first:")
+    lines.append("```")
+    lines.append("ai-daily-news: get latest news context only")
+    lines.append("```")
+    lines.append("")
+    lines.append("**Step 2:** Then ask your question — I'll be able to answer based on today's news!")
+    lines.append("")
+    lines.append("*This loads the news data without re-displaying the entire briefing.*")
+    lines.append("")
+    lines.append("---")
 
     lines.append("## Sponsor Information")
     lines.append("")

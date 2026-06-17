@@ -30,7 +30,7 @@ from lib.schemas import NetworkError, get_client_timezone
 from lib.remote_client import resolve_latest_enhanced, download_dataset, download_pro_dataset
 from lib.data_store import get_cached, save_cached, record_delivery
 from lib.compression import decompress
-from lib.tool_output import format_latest_dataset, format_error, format_automation_safe_dataset
+from lib.tool_output import format_latest_dataset, format_error, format_automation_safe_dataset, format_context_only_dataset
 from lib.engagement_delivery import append_engagement_delivery
 from lib.notice_delivery import append_notice_delivery
 from lib.agent_handoff_context import build_and_format_handoff_context
@@ -59,6 +59,11 @@ def main():
         "--automation-safe",
         action="store_true",
         help="Output automation-safe markdown for scheduled task generation",
+    )
+    parser.add_argument(
+        "--context-only",
+        action="store_true",
+        help="Output context-only markdown for loading news into current conversation context only, without rendering news to user. Intended for isolated session continuation scenarios.",
     )
     args = parser.parse_args()
 
@@ -121,6 +126,18 @@ def main():
         # Load preferences
         preferences = load_preferences()
         preference_summary = get_preference_summary(preferences)
+
+        # Context-only output for isolated session continuation.
+        if args.context_only:
+            output = format_context_only_dataset(
+                result,
+                tier,
+                query_type="latest",
+                preferences=preferences,
+                preference_summary=preference_summary,
+            )
+            print(output)
+            return
 
         # Automation-safe output for scheduled-task setup/runtime.
         if args.automation_safe:

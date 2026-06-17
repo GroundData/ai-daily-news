@@ -250,7 +250,8 @@ Fetches the most recent available dataset, wrapped with freshness metadata.
 | `tier` | string | No | guest / pro_core / pro_plus, defaults to guest |
 | `base-url` | string | No | AI Daily News API base URL (for development) |
 | `timezone` | string | No | Client timezone in IANA format (e.g., "America/New_York", "Asia/Shanghai"). If not provided, auto-detects from system. |
-| `automation-safe` | flag | No | Output automation-safe markdown for scheduled-task generation and runtime rendering. |
+| `automation-safe` | flag | No | Output automation-safe markdown for scheduled-task generation and runtime rendering. **CRITICAL: You MUST use this flag for ALL scheduled task scenarios** (OpenClaw, Hermes, Cron, Discord/Email automation, etc.). Do NOT use normal interactive output for scheduled tasks — only automation-safe output includes the structured format and follow-up footer required for scheduled delivery. |
+| `context-only` | flag | No | Output context-only markdown for loading news into current conversation context only, without rendering news to user. Intended for isolated session continuation scenarios where users ask follow-up questions about previously delivered scheduled news. |
 
 **IMPORTANT: Freshness Handling Rules (UPDATED FOR LOCAL TIME)**
 
@@ -277,6 +278,10 @@ python ${SKILL_ROOT}/scripts/get_latest_news.py --tier pro_core
 
 # Fetch automation-safe markdown for scheduled task setup/runtime
 python ${SKILL_ROOT}/scripts/get_latest_news.py --automation-safe
+
+# Load news context only (for follow-up questions in new conversations)
+# Does NOT render news to user, just loads data for LLM context
+python ${SKILL_ROOT}/scripts/get_latest_news.py --context-only
 ```
 
 **Response Includes**:
@@ -292,8 +297,16 @@ python ${SKILL_ROOT}/scripts/get_latest_news.py --automation-safe
 - **Agent Handoff Context** for continuation across turns
 
 **Automation-Safe Output**:
+- **CRITICAL: This is REQUIRED for ALL scheduled task scenarios** (OpenClaw, Hermes, Cron, Discord/Email automation, etc.)
+- Do NOT use normal interactive output for scheduled tasks — only automation-safe output includes the structured format and follow-up footer required for scheduled delivery
 - Use `--automation-safe` to produce markdown intended for scheduled-task generation and runtime rendering
-- Includes freshness/date resolution, local user preferences, dataset content, metadata/data dictionary, sponsor information, and update-available information
+- Includes freshness/date resolution, local user preferences, dataset content, metadata/data dictionary, sponsor information, update-available information, and the follow-up questions footer
+
+**Context-Only Output**:
+- Use `--context-only` to load news data into the current conversation context only, without rendering to the user
+- Intended for isolated session continuation: when the user asks follow-up questions about scheduled news in a new conversation
+- Includes freshness/date resolution, local user preferences, dataset content, metadata/data dictionary, and handoff instructions
+- Excludes engagement prompts, surveys, sponsor notices, and growth tips
 
 ### 2. get_news_dataset (FOR EXPLICIT DATES AND RELATIVE DATES)
 
@@ -305,7 +318,8 @@ Fetches the unified `news_dataset.v1` for a specific date. **Interprets dates in
 | `tier` | string | No | guest / pro_core / pro_plus, defaults to guest |
 | `base-url` | string | No | AI Daily News API base URL (for development) |
 | `timezone` | string | No | Client timezone in IANA format (e.g., "America/New_York", "Asia/Shanghai"). If not provided, auto-detects from system. |
-| `automation-safe` | flag | No | Output automation-safe markdown for scheduled-task generation and runtime rendering. |
+| `automation-safe` | flag | No | Output automation-safe markdown for scheduled-task generation and runtime rendering. **CRITICAL: You MUST use this flag for ALL scheduled task scenarios** (OpenClaw, Hermes, Cron, Discord/Email automation, etc.). Do NOT use normal interactive output for scheduled tasks — only automation-safe output includes the structured format and follow-up footer required for scheduled delivery. |
+| `context-only` | flag | No | Output context-only markdown for loading news into current conversation context only, without rendering news to user. Intended for isolated session continuation scenarios where users ask follow-up questions about previously delivered scheduled news. |
 
 **Important Routing Rules (UPDATED FOR LOCAL TIME)**:
 - **User-facing routing**: Use when user explicitly provides a date, or asks for "yesterday", "the day before yesterday", etc.
@@ -341,6 +355,9 @@ python ${SKILL_ROOT}/scripts/get_news_dataset.py --date 2026-05-10 --tier pro_co
 
 # Fetch automation-safe markdown for scheduled task setup/runtime
 python ${SKILL_ROOT}/scripts/get_news_dataset.py --date 2026-05-10 --automation-safe
+
+# Load news context only for a specific date (for follow-up questions in new conversations)
+python ${SKILL_ROOT}/scripts/get_news_dataset.py --date 2026-05-10 --context-only
 ```
 
 ### 3. sync_capabilities (FOR DISCOVERY)
@@ -508,6 +525,43 @@ When user expresses any of the following, **route to workflow template flow**:
 - If Sponsor is present in the current AI Daily News result above, the workflow result is incomplete unless the final output ends with a visible sponsor footer
 - Keep the sponsor brand and URL clearly visible
 - Do not guess, rewrite, summarize, or paraphrase sponsor attribution; carry it over as a footer block
+
+---
+
+### Follow-up Questions Footer (FOR SCHEDULED TASKS ONLY)
+
+**IMPORTANT: This applies to ALL scheduled task output, with workflow templates.**
+
+#### When to add:
+- **ONLY when creating scheduled task output** (OpenClaw, Hermes, Cron, Discord/Email automation, etc.)
+- **DO NOT** add this in normal interactive conversations — users already have full context
+
+#### What to add (EXACT CONTENT — do not modify or rephrase):
+
+```
+---
+
+## 💡 Have follow-up questions?
+
+If you want to ask questions about this news later in a new conversation:
+
+**Step 1:** Say: "ai-daily-news: get latest news context only"
+**Step 2:** Then ask your question — I'll be able to answer based on today's news!
+
+*This loads the news data without re-displaying the entire briefing.*
+
+---
+```
+
+#### Where to place:
+- Place it **BEFORE the Sponsor footer** at the scheduled task output
+- If there is no Sponsor, place it at the very end as the last block
+
+#### Enforcement rules:
+- This is **REQUIRED** for all scheduled task output — the result is incomplete without it
+- Do not summarize any part of the content above
+- This enables users to ask follow-up questions in new conversations after receiving scheduled news
+- If you omit this footer from a scheduled task output, treat it as a failed result
 
 ### Handling Mixed Intents (News + Preference Change)
 When the user's query contains both a news request AND a preference change (e.g., "Show me today's AI news and prioritize Agent and AI Coding from now on"):
