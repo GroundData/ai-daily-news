@@ -5,8 +5,8 @@
     "ttl_seconds": 3600,
     "offline": false,
     "client_policy": {
-      "latest_version": "v1.3.0",
-      "min_supported_version": "v1.3.0",
+      "latest_version": "v1.3.1",
+      "min_supported_version": "v1.3.1",
       "upgrade_required": false,
       "upgrade_url": "https://ainewparadigm.cn/download/skill",
       "upgrade_message": "New version available. Please update your AI Daily News skill."
